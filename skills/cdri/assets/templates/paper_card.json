@@ -55,5 +55,25 @@
     "failure_conditions": [],
     "potential_target_domains": [],
     "problem_structures": []
+  },
+  "G_research_story": {
+    "_instructions": "Fill for selected innovative papers after reading the argument and evidence; otherwise delete this section. This entire analysis is agent interpretation, not proof of novelty or why reviewers accepted the paper. Cite read source sections in each arc step. Keep current-project applications out of this global literature card.",
+    "summary": "",
+    "selection_reason": "",
+    "comparison_scope": [],
+    "contribution_types": [],
+    "arc": {
+      "important_question": {"text": "", "evidence": [{"location": "", "role": "why the question matters"}]},
+      "observation_or_gap": {"text": "", "evidence": [{"location": "", "role": "gap, contradiction or surprising observation"}]},
+      "mechanistic_insight": {"text": "", "evidence": [{"location": "", "role": "central insight and its support"}]},
+      "approach": {"text": "", "evidence": [{"location": "", "role": "why the method follows from the insight"}]},
+      "critical_evidence": {"text": "", "evidence": [{"location": "", "role": "figure/table/theorem and alternatives it discriminates"}]},
+      "scientific_implication": {"text": "", "evidence": [{"location": "", "role": "what understanding or practice changes"}]},
+      "boundary_conditions": {"text": "", "evidence": [{"location": "", "role": "limitations, negative results and assumptions"}]}
+    },
+    "beyond_sota": "",
+    "counterfactual_without_sota": "",
+    "alternative_explanations": [],
+    "transferable_lessons": [{"lesson": "", "conditions": "", "misuse_risk": ""}]
   }
 }

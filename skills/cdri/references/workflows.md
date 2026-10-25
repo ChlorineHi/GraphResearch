@@ -2,6 +2,10 @@
 
 `$CDRI` = `python <skill dir>/scripts/cdri.py`. Every step that writes knowledge goes through the CLI.
 
+Before the selected workflow, optionally learn from local past experiments according to
+[experiment-history.md](experiment-history.md): `learn_history: auto|on|off` (agent option, not CLI flag).
+Use metric/code evidence and project-local lessons to focus the work; skipping this step never blocks a mode.
+
 ## Contents
 - landscape · paper · compare · graph · ideate · story · refresh
 - transfer → transfer.md · diagnose → diagnosis.md · audit → integrity-audit.md
@@ -23,7 +27,8 @@ structure, and contradicting evidence.
 5. `screen suggest --run <id> --tier focused` then `screen decide ... --reason`. Tiers: landscape (metadata),
    focused (abstract + key sections), deep (full text + code). No fixed counts: stop when new papers stop
    changing the picture. Optional: `cite expand <doi> --direction both` for key papers (OpenAlex).
-6. For deep papers follow **paper**.
+6. For deep papers follow **paper**. For especially innovative candidates, explain why within this search's
+   comparison scope and build a research-story understanding card; do not pick solely by SOTA or venue.
 7. `report landscape --run <id> --out auto` and fill the AGENT sections: scientific questions, paradigms,
    method taxonomy, recent vs foundational, controversies (cite contradictory-lane evidence), limitations
    (author-acknowledged vs inferred vs agent-proposed).
@@ -40,6 +45,9 @@ structure, and contradicting evidence.
    evaluation / preprocessing / config_cli), hyperparameter defaults, permalinks. Read the actual code with
    `code show`. Map each key equation to a function; mark `discrepancy` when code differs from the paper.
 4. Fill the card (paper-card.md), `paper validate`, fix warnings you can fix honestly, `paper ingest`.
+   For selected innovative papers, include `G_research_story` following [research-story.md](research-story.md).
+   Ask what remains scientifically valuable if the headline SOTA gain disappears; tie each argument step
+   to read evidence and record both reusable reasoning patterns and their limits.
 5. `report paper --id <id>` and complete "与其他方法的本质差别".
 
 ## compare
@@ -65,6 +73,9 @@ structure, and contradicting evidence.
 ## ideate
 
 1. Start from evidence: a transfer hypothesis, a failure mode, a contradiction or a gap from `graph coverage`.
+   Retrieve relevant research-story cards by problem, mechanism and evidence-design queries; inspect original
+   sources and boundary conditions before borrowing a lesson (research-story.md). A borrowed narrative is
+   scaffolding for a new hypothesis, not evidence that our hypothesis is true.
 2. `ideate scaffold [--from transfer:<id>]` → fill: question, sources (KB ids), shared_structure,
    mechanism_hypothesis, distinction_from_prior, falsifiable_predictions (each with refuted_if), risks.fails_if,
    evidence.existing / evidence.missing, innovation_type, source_domains, dimensions (level + rationale each).
@@ -73,6 +84,9 @@ structure, and contradicting evidence.
 4. Respect frozen decisions (`project show`); the card must state `respects_frozen_decisions`.
 
 ## story
+
+First retrieve related research-story cards (research-story.md) to learn how published work connects questions,
+insights and discriminating evidence. Identify what our own evidence already supports and what remains missing.
 
 1. Record what actually happened: `experiment record` (artifacts!), `diagnose conclude`, counterexamples via
    `kg link <experiment> CONTRADICTS <claim> --status experiment_observed --source-type local_experiment

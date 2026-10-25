@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -96,10 +97,18 @@ def c_config(a):
             rep["ping"] = {}
             for name, url in pings.items():
                 try:
-                    http.get(url, use_cache=False, retries=1, timeout=15)
+                    kwargs = {"use_cache": False, "retries": 1, "timeout": 15}
+                    if name == "semantic_scholar" and config.env("s2_api_key"):
+                        kwargs["headers"] = {"x-api-key": config.env("s2_api_key")}
+                    if name == "arxiv":
+                        ET.fromstring(http.get(url, **kwargs).body)
+                    else:
+                        http.get_json(url, **kwargs)
                     rep["ping"][name] = "ok"
                 except http.HTTPFailure as e:
                     rep["ping"][name] = f"{e.status}: {str(e)[:100]}"
+                except (ValueError, ET.ParseError) as e:
+                    rep["ping"][name] = f"error: invalid API response ({type(e).__name__})"
         out(rep)
 
 

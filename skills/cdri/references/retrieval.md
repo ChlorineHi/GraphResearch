@@ -38,10 +38,28 @@ against Crossref/OpenAlex and title similarity (flags `not_found` / `title_misma
 
 ## Logging and failures
 
-Each (query × source) attempt is a line in `runs/<id>/log.jsonl` with status `ok | empty | rate_limited |
-error | offline | blocked_privacy | skipped`. `summary.json` aggregates by source/lane and lists failures.
+Each planned (query × selected source) operation is a line in `runs/<id>/log.jsonl` with status
+`ok | empty | rate_limited | blocked | error | offline | blocked_privacy | skipped | skipped_source`.
+`attempted` distinguishes an invoked adapter from a skipped operation (the adapter may serve cached data).
+After a source exhausts HTTP retries with `rate_limited`, or returns an anti-bot `blocked` response, pause that
+source for the rest of this run. Later queries are `skipped_source` with the originating status/query ID and
+no adapter request; other selected sources continue. A new run may probe again; no permanent disablement.
+
+`summary.json` aggregates by source/lane and lists actual failures and skipped coverage. `status` is
+`complete` (selected scope completed, including empty results), `partial` (some succeeded and some failed/skipped),
+`failed` (no source succeeded), or `not_run` (no adapter invoked). It includes `available_sources`,
+`attempted_calls`, `skipped_calls`, `source_recovery`, `planned_sources`, `source_filter`, `excluded_sources`.
+An empty `failures` for a five-source run never implies seven-source coverage; excluded sources were not queried.
+Per-run `unique_records` cannot be added across runs without deduplicating their records together, and the global
+Paper-node count may include earlier/other searches.
+
 HTTP responses are cached in `$CDRI_HOME/cache/http` (7-day TTL; 30 for single works). `CDRI_OFFLINE=1`
 uses cache only. Secrets in URLs are redacted in logs.
+
+For Semantic Scholar 429, check whether `S2_API_KEY` is set in the process launching the agent (then restart
+the agent); even keyed requests can be rate-limited. For DBLP HTML challenges, treat that source as unavailable
+and continue other sources rather than re-requesting the challenge. `config check --ping` validates JSON/XML
+payloads and sends the configured Semantic Scholar key; HTTP 200/202 alone does not establish API health.
 
 ## Privacy gate
 

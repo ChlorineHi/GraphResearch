@@ -9,6 +9,11 @@ contradict theory or the user's expectation. Do **not** run a literature search 
 
 ## Order
 
+Optional pre-step: if history learning is selected, follow [experiment-history.md](experiment-history.md)
+to inspect relevant baselines, variants and failures before choosing checks. Reuse evidence-linked lessons
+only when their data/protocol conditions apply; this does not satisfy the reproducibility/local-check gate
+by itself. Respect `learn_history: off` and continue diagnosis without folder review.
+
 1. Collect facts: `diagnose log train.csv --metric-col val_metric --baseline X [--lower-better]`,
    `diagnose preds preds.csv --group-col <entity>`, `audit leakage`, `audit metric`.
 2. `diagnose triage "<symptom>" --obs log.json --obs preds.json --topic "<task>" --mechanism <id>

@@ -1,4 +1,4 @@
-"""Paper Card: validation and ingestion of the structured method-level record (sections A-F).
+"""Paper Card: method-level record (A-F) and optional research-story understanding (G).
 
 Mechanical integrity rules enforced here:
 - method-level details (B/C/D) sourced from the abstract or introduction are downgraded to unverified;
@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from .. import config
 from ..ids import entity_id, parse_identifier, slug
 from ..kg.store import KnowledgeBase
+from ..insight.story import ARC
 from ..transfer import ontology
 from ..transfer.signature import normalize as normalize_signature, signature_id
 
@@ -60,6 +61,46 @@ def _items(section: Any) -> List[Tuple[str, dict]]:
                 walk(x, f"{path}[{i}]")
     walk(section, "")
     return out
+
+
+def _validate_research_story(story: Any, pid: str, depth: str, kb: KnowledgeBase) -> dict:
+    """Narrative interpretations remain inferences; unread/incomplete analyses stay unverified."""
+    errors, warnings, gaps, locations = [], [], [], []
+    if not isinstance(story, dict):
+        return {"errors": ["G_research_story must be an object"], "warnings": [], "gaps": [],
+                "status": "unverified", "evidence_locations": []}
+    for field in ("summary", "selection_reason", "beyond_sota", "counterfactual_without_sota"):
+        if not isinstance(story.get(field), str) or not story[field].strip():
+            gaps.append(f"G_research_story.{field}")
+    arc = story.get("arc", {})
+    if not isinstance(arc, dict):
+        errors.append("G_research_story.arc must be an object")
+        arc = {}
+    for step in ARC:
+        item = arc.get(step)
+        if not isinstance(item, dict) or not isinstance(item.get("text"), str) or not item["text"].strip():
+            gaps.append(f"G_research_story.arc.{step}")
+            continue
+        evidence = item.get("evidence")
+        if not isinstance(evidence, list) or not evidence:
+            gaps.append(f"G_research_story.arc.{step}.evidence")
+            continue
+        for source in evidence:
+            location = source.get("location") if isinstance(source, dict) else None
+            if not isinstance(location, str) or not location.strip() or not kb.g.ledger_has(pid, location):
+                gaps.append(f"G_research_story.arc.{step}.unread_or_missing_location")
+            elif location not in locations:
+                locations.append(location)
+    for field in ("comparison_scope", "contribution_types", "alternative_explanations", "transferable_lessons"):
+        if not isinstance(story.get(field), list) or not story[field]:
+            gaps.append(f"G_research_story.{field}")
+    if depth not in ("fulltext", "deep"):
+        gaps.append("G_research_story.fulltext_reading")
+    if gaps:
+        warnings.append("G_research_story is incomplete or cites unread evidence; stored as unverified. "
+                        "Narrative analysis does not establish novelty or reasons for publication.")
+    return {"errors": errors, "warnings": warnings, "gaps": gaps,
+            "status": "unverified" if errors or gaps else "agent_inference", "evidence_locations": locations}
 
 
 def validate(card: Dict[str, Any], kb: KnowledgeBase) -> Dict[str, Any]:
@@ -140,8 +181,14 @@ def validate(card: Dict[str, Any], kb: KnowledgeBase) -> Dict[str, Any]:
     if card.get("F_signature"):
         sig_norm, sig_w = normalize_signature(card["F_signature"], kb)
         warnings += sig_w
+    research_story = None
+    if "G_research_story" in card:
+        research_story = _validate_research_story(card["G_research_story"], pid, depth, kb)
+        errors += research_story["errors"]
+        warnings += research_story["warnings"]
+        gaps += research_story["gaps"]
     return {"paper_id": pid, "reading_depth": depth, "errors": errors, "warnings": warnings, "gaps": gaps,
-            "signature": sig_norm}
+            "signature": sig_norm, "research_story": research_story}
 
 
 def _status_for(it: dict, depth: str, paper_id: str) -> Tuple[Optional[dict], Optional[str]]:
@@ -299,11 +346,32 @@ def ingest(card: Dict[str, Any], kb: KnowledgeBase, save: bool = True) -> Dict[s
     sig = report.get("signature")
     if sig:
         w += ingest_signature(kb, mid, sig, card.get("F_signature", {}).get("source"), pid)
+    story_id = None
+    if report["research_story"] is not None:
+        story = card["G_research_story"]
+        story_id = f"claim:{slug(pid, 50)}-research-story"
+        evidence = report["research_story"]
+        # Store the complete analysis in a field included by both semantic and keyword retrieval.
+        prov = {"source_type": "agent", "source_ref": pid,
+                "location": "; ".join(evidence["evidence_locations"]), "extractor": "agent",
+                "note": "research-story interpretation; not author testimony or acceptance evidence"}
+        r = kb.upsert_node(story_id, "ScientificClaim", f"Research story: {card.get('title') or pid}"[:200],
+                           props={"claim_type": "research_story", "paper": pid, "method": mid,
+                                  "research_story": story, "evidence_gaps": evidence["gaps"],
+                                  "rationale": json.dumps(story, ensure_ascii=False)},
+                           status=evidence["status"], prov=prov, overwrite=True)
+        w += r["warnings"]
+        stats["ScientificClaim"] = stats.get("ScientificClaim", 0) + 1
+        for src in (pid, mid):
+            r = kb.add_edge(src, "LINKS_TO", story_id, status=evidence["status"], prov=prov,
+                            props={"role": "research_story_interpretation"})
+            w += r["warnings"]
     if save:
         cdir = config.home() / "cards"
         cdir.mkdir(exist_ok=True)
         (cdir / f"{slug(pid, 90)}.json").write_text(json.dumps(card, indent=2, ensure_ascii=False), encoding="utf-8")
-    return {"ingested": True, "method_id": mid, **report, "write_warnings": sorted(set(w)), "nodes_written": stats}
+    return {"ingested": True, "method_id": mid, "research_story_id": story_id,
+            **report, "write_warnings": sorted(set(w)), "nodes_written": stats}
 
 
 def ingest_signature(kb: KnowledgeBase, method_id: str, sig: Dict[str, Any], source: Optional[dict],

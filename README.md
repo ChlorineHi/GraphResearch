@@ -2,6 +2,8 @@
 
 面向 **Claude Code / Codex CLI / Cursor / OpenCode** 的科研情报 Agent Skill：文献调研（四通道检索）、论文方法深读与代码对照、
 跨学科机制迁移、实验失败诊断、数据与指标审计、研究构想与科学叙事，并把读过的内容沉淀为**带证据等级的知识图谱**供跨项目复用。
+也可以在开始新研究前，选择读取指定文件夹中的历史实验，从指标、配置和模型代码中总结优缺点与可复用知识；实验及其经验保存在当前项目知识库。
+对本次调研中判断创新性突出的论文，还会分析其科学问题、关键洞察、证据链和边界条件，将“性能之外的科学贡献”存成可检索的理解卡，用于后续研究假设与论文叙事。
 
 CDRI 的核心原则：**不伪造、不越级、不隐瞒失败**。每条结论带证据标签（Verified Fact / Author Claim / Agent Interpretation /
 Hypothesis / Unverified）；证据等级由来源决定、不会自动升级；检索失败、限流、全文缺失都会显式写入结果与报告。
@@ -24,7 +26,11 @@ flowchart TD
     route --> mode
     mode --> mem["kg search<br/>先查 semantic 与 mechanism"]
     mem --> sess["session start 或 resume"]
-    sess --> pick{"进入对应模式"}
+    sess --> hist{"可选：学习历史实验?"}
+    hist -->|"on / auto 且相关目录明确"| histread["读取指标、配置与运行对应代码<br/>检查可比性，提炼优缺点和条件性经验"]
+    hist -->|"off / 无相关目录"| pick{"进入对应模式"}
+    histread --> histkb["通过 CLI 记录证据与解释<br/>保留在当前项目知识库"]
+    histkb --> pick
 
     pick -->|landscape| plan["landscape plan<br/>in-domain、adjacent、distant、contradictory"]
     pick -->|paper| fetch["paper fetch<br/>合法 OA，或用户提供的文件"]
@@ -67,11 +73,11 @@ flowchart TD
     classDef gate fill:#fde8e8,stroke:#a33b3b,color:#1a1a1a
     classDef store fill:#e7f6ec,stroke:#2d7a46,color:#1a1a1a
     classDef out fill:#f3eefc,stroke:#5b3d8a,color:#1a1a1a
-    class named,pick,diag,ledger decision
+    class named,hist,pick,diag,ledger decision
     class route,mem,sess,mode,plan,run,screen,fetch,read,code,card,cmp,xfer,aud,gq,idea,ref,promo cli
     class low,pend gate
     class rpt out
-    class kb store
+    class kb,histkb store
 ```
 
 实线是主路径，虚线是可选分支。诊断在本地就能解释时不检索文献。检索失败、全文缺失和未读章节会停在报告里，不会被写成已核实结论。
@@ -143,6 +149,33 @@ python skills/cdri/scripts/cdri.py config set window_months 18   # 可配置：w
 /cdri diagnose 某个新模型训练正常，但在未见过的测试对象上泛化很差，甚至低于简单基线。
 mode: transfer 研究空间细胞扰动预测，并主动从其他学科寻找可以迁移的方法。
 模式：story 模型性能提升有限，但我们发现了测量噪声上限、训练目标的局限和重要的机制反例。
+```
+
+可选的历史实验学习适用于各模式，不改变已选模式，也不要求每次执行：
+
+```text
+先学习 D:/Research/experiments 中已有实验的指标和模型代码，总结各模型优缺点、失败原因和可复用知识，再提出下一步方案。
+/cdri diagnose 泛化差；learn_history: on；history_root: D:/Research/runs；重点看 val_spearman 和未见实体测试集。
+这次跳过历史实验，learn_history: off，只调研相关文献。
+```
+
+`learn_history: auto|on|off`、`history_root`、`include`、`exclude` 和 `focus_metrics` 是 **Agent 请求选项，不是 CLI 参数**。
+默认 `auto`：当前问题相关且项目内实验目录明确时读取，否则跳过；`on` 显式启用，`off` 显式跳过。
+Agent 读取日志、结果、配置和代码快照，核对指标口径与实验所用代码，保留失败与无效结果；知识点包含证据、适用条件、反例和待验证实验。
+代码只做静态阅读，不自动训练；旧实验缺少代码快照时会标记实现未核实，协议不同或未知的分数不会混排。
+具体流程见 [`experiment-history.md`](skills/cdri/references/experiment-history.md)。
+
+对于重点创新论文，Agent 会进一步提问：**如果去掉 SOTA 提升，这篇论文还有什么科学贡献？哪项证据让它的核心论点成立？**
+分析沿“问题 → 缺口 → 洞察 → 方法 → 关键证据 → 科学意义 → 边界”展开，同时检查替代解释与不足。
+这些内容写入可选的 `G_research_story`，通过原有 `paper validate` / `paper ingest` 存为关联论文与方法的知识卡，
+可用 `kg search --mode semantic` 检索，并在 `report paper` 中查看。后续提出 research thesis 时，按问题、机制和证据设计检索这些卡片，
+核对适用条件并生成可证伪假设。总结属于 Agent Interpretation，原文未读或证据不全时保持 unverified；不能据发表结果反推实际录用原因。
+此处 RAG 指检索已积累的理解卡来辅助推理；默认使用现有本地 TF-IDF 检索，可选本地 embedding，不涉及模型微调。
+流程与字段见 [`research-story.md`](skills/cdri/references/research-story.md)。
+
+```text
+调研这个方向，对你在本次已读论文中认为最有创新性的工作，分析它如何建立有说服力的科学故事、性能之外贡献了什么，并沉淀成可检索知识。
+为当前课题提出 research thesis 前，检索已有研究故事理解卡，说明可借鉴的洞察、适用边界，以及我们仍缺少的关键实验。
 ```
 
 | 模式 | 用途 |
@@ -218,7 +251,7 @@ $CDRI session start landscape "TF binding" && $CDRI session resume
 
 ```bash
 pip install pytest
-python -m pytest tests           # 53 个测试，全部离线（合成 fixture + 本地 git 仓库），约 20 秒
+python -m pytest tests           # 全部离线：合成 fixture + 本地 git 仓库
 python tools/check_command_refs.py # 检查文档中引用的每条 cdri 命令都存在
 python tools/run_demo.py         # 重新生成 docs/04-usage-demo.md
 python tools/gen_cli_reference.py  # 重新生成 references/cli.md
@@ -231,7 +264,10 @@ fixture 全部为合成数据（标题带 `[SYNTHETIC FIXTURE]`，DOI 使用 `10
 详见 [`docs/03-test-report.md`](docs/03-test-report.md) 第 4 节。要点：
 
 - **不会后台运行**：Skill 只在 Agent 调用时工作；`refresh` 必须显式触发（可配合外部定时任务）。
-- 无 `S2_API_KEY` 时 Semantic Scholar 常返回 429；dblp 目前对脚本请求返回反爬页面，报告为 `blocked`。
+- Semantic Scholar 可能返回 429（未配置 `S2_API_KEY` 时使用共享匿名池），dblp 可能返回反爬页面，报告为 `blocked`。
+  同一轮中限流重试耗尽或遇到反爬后，会暂停该源，后续查询记录为 `skipped_source`，其他源继续；下轮可重新尝试。
+  总结区分 `complete / partial / failed / not_run`，列出限定/排除的来源及恢复建议；`empty` 是成功执行但无匹配结果。
+  `config check --ping` 会验证 API 返回的 JSON/XML，并为 Semantic Scholar 携带配置的 Key，避免把 HTML 挑战页判为正常。
 - 只获取合法开放获取全文（arXiv HTML/PDF、PMC、Europe PMC、Unpaywall OA 链接）；不抓取出版商付费页面。
 - PDF 无版面模型时章节与公式识别较弱（会给出警告）；HTML 全文质量最好。
 - 模式路由、代码角色识别、问题结构匹配都是启发式的，结果是“建议”，由 Agent 复核。

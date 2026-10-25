@@ -38,19 +38,27 @@ def execute(plan: dict, *, project: Optional[str] = None, run_id: Optional[str] 
     per_query = plan["budget"]["per_query"]
     all_recs: List[Record] = []
     log: List[dict] = []
+    paused_sources: Dict[str, dict] = {}
     for q in plan["queries"]:
         issues = privacy_check(q["text"])
         srcs = [s for s in q["sources"] if not only_sources or s in only_sources]
         for src in srcs:
             entry = {"t": _dt.datetime.now().isoformat(timespec="seconds"), "qid": q["qid"], "lane": q["lane"],
                      "db": src, "query": q["text"], "date_from": q.get("date_from"),
-                     "preprints_only": q.get("preprints_only", False)}
+                     "preprints_only": q.get("preprints_only", False), "attempted": False}
             if issues and not allow_sensitive:
                 entry.update(status="blocked_privacy", n_results=0, error="; ".join(issues))
                 log.append(entry)
                 continue
             if src == "semantic_scholar" and not config.env("s2_api_key"):
                 entry["note"] = "no S2_API_KEY: shared unauthenticated pool, 429 likely"
+            if src in paused_sources:
+                cause = paused_sources[src]
+                entry.update(status="skipped_source", n_results=0, cause_status=cause["status"],
+                             cause_qid=cause["qid"], error=f"source paused for this run after {cause['status']} "
+                             f"on {cause['qid']}; no request sent; other sources continue")
+                log.append(entry)
+                continue
             try:
                 fn = S.SEARCHERS[src]
                 kwargs = {"limit": per_query, "date_from": q.get("date_from")}
@@ -60,6 +68,7 @@ def execute(plan: dict, *, project: Optional[str] = None, run_id: Optional[str] 
                     entry.update(status="skipped", n_results=0, error="preprints_only applies to europepmc")
                     log.append(entry)
                     continue
+                entry["attempted"] = True
                 recs = fn(q["text"], **kwargs)
                 for r in recs:
                     r.found_by.append({"qid": q["qid"], "lane": q["lane"], "db": src})
@@ -67,6 +76,8 @@ def execute(plan: dict, *, project: Optional[str] = None, run_id: Optional[str] 
                 entry.update(status="ok" if recs else "empty", n_results=len(recs))
             except http.HTTPFailure as e:
                 entry.update(status=e.status, n_results=0, error=str(e))
+                if e.status in ("rate_limited", "blocked"):
+                    paused_sources[src] = {"status": e.status, "qid": q["qid"]}
             except Exception as e:  # parsing errors etc. must be visible, not swallowed
                 entry.update(status="error", n_results=0, error=f"{type(e).__name__}: {e}")
             log.append(entry)
@@ -82,6 +93,9 @@ def execute(plan: dict, *, project: Optional[str] = None, run_id: Optional[str] 
             fh.write(json.dumps(r.to_dict(), ensure_ascii=False) + "\n")
     summary = coverage(log, deduped)
     summary.update({"run_id": run_id, "dir": str(d), "raw_records": len(all_recs), "unique_records": len(deduped)})
+    planned_sources = sorted({s for q in plan["queries"] for s in q["sources"]})
+    summary.update({"planned_sources": planned_sources, "source_filter": list(only_sources) if only_sources else None,
+                    "excluded_sources": [s for s in planned_sources if only_sources and s not in only_sources]})
     (d / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     if ingest:
         kb = kb or KnowledgeBase(project)
@@ -101,14 +115,30 @@ def coverage(log: List[dict], records: List[Record]) -> dict:
         by_lane[e["lane"]]["queries"] += 1
         by_lane[e["lane"]]["results"] += e.get("n_results", 0)
         if e["status"] not in ("ok", "empty"):
-            failures.append({"db": e["db"], "query": e["query"], "status": e["status"], "error": e.get("error")})
+            failures.append({"db": e["db"], "query": e["query"], "status": e["status"], "error": e.get("error"),
+                             "attempted": e.get("attempted", True), "cause_status": e.get("cause_status")})
     status_counts: Dict[str, int] = {}
     recency: Dict[str, int] = {}
     for r in records:
         status_counts[r.pub_status] = status_counts.get(r.pub_status, 0) + 1
         b = r.signals.get("recency", "undated")
         recency[b] = recency.get(b, 0) + 1
-    return {"by_db": by_db, "by_lane": by_lane, "failures": failures, "pub_status": status_counts,
+    available = [db for db, counts in by_db.items() if counts.get("ok", 0) + counts.get("empty", 0)]
+    attempted = sum(e.get("attempted", True) for e in log)
+    status = ("partial" if failures else "complete") if available else ("failed" if attempted else "not_run")
+    recovery = []
+    for db, counts in by_db.items():
+        if counts.get("rate_limited") or counts.get("blocked"):
+            advice = "Retry in a later run or restrict --source to other databases; coverage remains incomplete."
+            if db == "semantic_scholar":
+                advice += (" Set S2_API_KEY in the environment of the process launching the agent, restart the "
+                           "agent, and verify with config check --ping; a key does not guarantee no 429.")
+            elif db == "dblp":
+                advice += " An anti-bot HTML response is not search results; do not loop on the challenge."
+            recovery.append({"db": db, "action": advice})
+    return {"status": status, "available_sources": available, "attempted_calls": attempted,
+            "skipped_calls": len(log) - attempted, "source_recovery": recovery,
+            "by_db": by_db, "by_lane": by_lane, "failures": failures, "pub_status": status_counts,
             "recency": recency}
 
 

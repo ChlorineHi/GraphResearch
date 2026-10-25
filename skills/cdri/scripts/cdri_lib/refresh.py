@@ -72,10 +72,11 @@ def run_watch(kb: KnowledgeBase, wid: str, *, project: Optional[str] = None, sin
         for i in ids & known:
             if known_status.get(i) == "preprint" and r.pub_status == "published":
                 status_changes.append({"id": i, "now": r.canonical, "venue": r.venue})
-    attempted = sum(sum(v.values()) for v in summary["by_db"].values())
+    attempted = summary["attempted_calls"]
     ok = sum(v.get("ok", 0) + v.get("empty", 0) for v in summary["by_db"].values())
     entry = {"t": _dt.datetime.now().isoformat(timespec="seconds"), "since": start, "run_id": run_id,
-             "new": len(new), "status_changes": len(status_changes), "failed_calls": attempted - ok}
+             "new": len(new), "status_changes": len(status_changes), "failed_calls": attempted - ok,
+             "skipped_calls": summary["skipped_calls"]}
     if ok:  # only advance the checkpoint if at least part of the search actually ran
         w["last_checked"] = config.today().isoformat()
     w["history"].append(entry)

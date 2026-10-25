@@ -55,6 +55,16 @@ def landscape(run_id: str, project: Optional[str] = None, max_per_lane: int = 25
                     f"- 候选问题结构：{', '.join(s['id'] + '（' + s['match'] + '）' for s in plan['structures']) or '无'}",
                     "", LEGEND, "## 1. 检索覆盖（由检索日志计算）", "",
                     "| 数据库 | 状态计数 |", "|---|---|"]
+    if "status" in summary:
+        overall = {"complete": "计划内来源已完成检索", "partial": "部分来源失败，检索已降级继续",
+                   "failed": "所有已尝试来源均失败，本轮没有成功检索", "not_run": "没有实际执行检索请求"}
+        L[2:2] = [f"- 总体状态：**{overall[summary['status']]}**；响应来源："
+                  + (", ".join(summary["available_sources"]) or "无")
+                  + f"；已尝试调用 {summary['attempted_calls']} 次，跳过 {summary['skipped_calls']} 次。"]
+        if summary.get("source_filter"):
+            L[3:3] = ["- 本轮限定来源：" + ", ".join(summary["source_filter"])
+                      + "；计划中未查询的来源：" + (", ".join(summary["excluded_sources"]) or "无")
+                      + "。完成状态仅针对本轮范围，未查询不等于成功。"]
     for db, st in summary["by_db"].items():
         L.append(f"| {db} | {', '.join(f'{k}={v}' for k, v in st.items())} |")
     L += ["", "| 通道 | 查询数 | 返回结果数 |", "|---|---|---|"]
@@ -66,6 +76,8 @@ def landscape(run_id: str, project: Optional[str] = None, max_per_lane: int = 25
         L += ["", "**未完成的检索（必须如实报告）**：", ""]
         for f in summary["failures"][:30]:
             L.append(f"- {f['db']} · `{f['query']}` → **{f['status']}**：{(f.get('error') or '')[:160]}")
+    for recovery in summary.get("source_recovery", []):
+        L.append(f"- 恢复建议（{recovery['db']}）：{recovery['action']}")
     L += ["", "## 2. 按检索通道的文献版图", ""]
     lane_zh = {"in_domain": "A. In-domain（领域内直接相关）", "adjacent": "B. Adjacent-domain（相邻领域）",
                "distant": "C. Distant-domain（远域：数学结构相似）",
@@ -164,6 +176,40 @@ def paper(paper_id: str, kb: KnowledgeBase) -> str:
                 tag = "（负面结果）" if r["props"].get("negative") else ""
                 L.append(f"- {r['label']}{tag} — **{ep.label(r['status'])}** · ablation={r['props'].get('is_ablation')}"
                          f" · OOD={r['props'].get('is_ood')}")
+        L.append("")
+    for link in kb.edges(src=pid, etype="LINKS_TO"):
+        analysis = kb.get_node(link["dst"])
+        if not analysis or analysis["retracted"] or analysis["props"].get("claim_type") != "research_story":
+            continue
+        story = analysis["props"]["research_story"]
+        L += ["## 研究故事与科学贡献（Research Story）", "",
+              f"- 知识卡：`{analysis['id']}` — **{ep.label(analysis['status'])}**",
+              "- 以下为基于已读原文的分析；实际录用原因未知。", ""]
+        for field, title in (("summary", "核心叙事"), ("selection_reason", "选择理由"),
+                             ("comparison_scope", "比较范围"), ("contribution_types", "贡献类型"),
+                             ("beyond_sota", "性能之外的贡献"),
+                             ("counterfactual_without_sota", "移除 SOTA 后仍成立什么")):
+            if story.get(field):
+                value = story[field]
+                L.append(f"- **{title}**：{', '.join(map(str, value)) if isinstance(value, list) else value}")
+        for step, item in (story.get("arc") or {}).items():
+            if not isinstance(item, dict) or not isinstance(item.get("text"), str):
+                continue
+            sources = item.get("evidence")
+            locations = [str(s.get("location") or "?") for s in sources if isinstance(s, dict)] \
+                if isinstance(sources, list) else []
+            L.append(f"- **{step}**：{item['text']} · 原文：{'; '.join(locations) or '缺失'}")
+        for alternative in story.get("alternative_explanations") or []:
+            L.append(f"- **替代解释/证据缺口**：{alternative}")
+        for lesson in story.get("transferable_lessons") or []:
+            if isinstance(lesson, dict):
+                L.append(f"- **可复用经验（{ep.label(analysis['status'])}）**：{lesson.get('lesson', '')}"
+                         f" · 适用条件：{lesson.get('conditions') or '未知'}"
+                         f" · 误用风险：{lesson.get('misuse_risk') or '未知'}")
+            else:
+                L.append(f"- **可复用经验（{ep.label(analysis['status'])}）**：{lesson}")
+        if analysis["props"].get("evidence_gaps"):
+            L.append("- **未解决缺口**：" + "; ".join(analysis["props"]["evidence_gaps"]))
         L.append("")
     L += ["## 与其他方法的本质差别", "", AGENT, ""]
     return "\n".join(L)

@@ -19,6 +19,9 @@ reported, guesses are not acceptable.
   negative_results, limitations {author_acknowledged (paper source), inferred_from_results (basis),
   agent_proposed (rationale)}.
 - **F_signature**: see transfer.md.
+- **G_research_story** (selected innovative papers only): see [research-story.md](research-story.md).
+  Records selection scope/reason, the scientific argument with source locations, contributions beyond SOTA,
+  a no-SOTA counterfactual, alternative explanations and conditional lessons. Delete when not performed.
 
 ## What the CLI enforces at validate/ingest
 
@@ -32,6 +35,10 @@ reported, guesses are not acceptable.
   agent_proposed → hypothesis.
 - Paper-sourced items whose location is not in the reading ledger are stored as unverified with a warning. After
   reading more, re-ingest; supported upgrades appear in `kg pending` and require `kg promote`.
+- G is stored as a separate, searchable ScientificClaim linked to the paper and method, with `source_type=agent`.
+  Complete, ledger-backed analyses are `agent_inference`; missing/unread evidence stays `unverified`. Neither
+  a paper citation nor a user-supplied status can make this interpretation an Author Claim or Verified Fact.
+  Ingestion returns `research_story_id`; `report paper` includes the analysis. Older A-F cards remain valid.
 
 ## Reading ledger
 
