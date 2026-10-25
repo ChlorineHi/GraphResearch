@@ -1,0 +1,55 @@
+{
+  "_note": "Seed lexicon for discipline detection and source routing. Venue lists are quality *signals*, never gates. Extend freely.",
+  "disciplines": [
+    {
+      "id": "life_science",
+      "label": "Life science / bioinformatics",
+      "keywords": ["gene", "genome", "genomic", "transcription", "protein", "cell", "single-cell", "scrna", "rna", "dna", "chromatin", "enhancer", "promoter", "motif", "binding", "tf", "epigen", "spatial transcriptomic", "perturbation", "crispr", "perturb-seq", "drug", "molecule", "tissue", "patient", "donor", "omics", "sequencing", "variant", "pathway", "biolog", "biomedical", "clinical", "基因", "蛋白", "细胞", "转录", "组学", "空间转录组", "扰动", "生物"],
+      "sources": ["europepmc", "pubmed", "openalex", "semantic_scholar", "crossref"],
+      "venues": ["Nature", "Science", "Cell", "Nature Methods", "Nature Biotechnology", "Nature Machine Intelligence", "Nature Computational Science", "Nature Genetics", "Nature Communications", "Cell Systems", "Molecular Cell", "Genome Biology", "Genome Research", "Nucleic Acids Research", "Bioinformatics", "PNAS"]
+    },
+    {
+      "id": "cs_ml",
+      "label": "Computer science / machine learning",
+      "keywords": ["neural", "deep learning", "transformer", "attention", "graph neural", "gnn", "diffusion", "contrastive", "representation learning", "self-supervised", "generalization", "zero-shot", "few-shot", "domain adaptation", "language model", "llm", "vision", "image", "reinforcement", "optimization", "benchmark", "embedding", "equivariant", "neural operator", "神经网络", "深度学习", "表征", "泛化", "机器学习"],
+      "sources": ["arxiv", "dblp", "semantic_scholar", "openalex"],
+      "venues": ["NeurIPS", "ICML", "ICLR", "CVPR", "ICCV", "ECCV", "ACL", "EMNLP", "KDD", "AAAI", "IJCAI", "SIGGRAPH", "MLSys", "OSDI", "SOSP", "TPAMI", "JMLR", "IEEE Transactions on Neural Networks and Learning Systems", "IEEE Transactions on Knowledge and Data Engineering", "Transactions on Machine Learning Research"]
+    },
+    {
+      "id": "statistics",
+      "label": "Statistics",
+      "keywords": ["causal", "identifiab", "inference", "bayesian", "posterior", "estimator", "regression", "hypothesis test", "confidence interval", "conformal", "bootstrap", "latent variable", "mixed model", "multiple testing", "measurement error", "selection bias", "统计", "因果", "可识别"],
+      "sources": ["openalex", "arxiv", "crossref", "semantic_scholar"],
+      "venues": ["Journal of the American Statistical Association", "Journal of the Royal Statistical Society Series B", "Annals of Statistics", "Biometrika", "Biostatistics"]
+    },
+    {
+      "id": "physics",
+      "label": "Physics / statistical physics",
+      "keywords": ["statistical physics", "statistical mechanics", "energy landscape", "free energy", "partition function", "ising", "spin glass", "thermodynamic", "boltzmann", "phase transition", "renormalization", "hamiltonian", "molecular dynamics", "物理", "能量", "自由能"],
+      "sources": ["arxiv", "openalex", "crossref"],
+      "venues": ["Physical Review Letters", "Physical Review E", "Physical Review X", "Physical Review Research", "PNAS", "Nature Physics"]
+    },
+    {
+      "id": "math_control",
+      "label": "Mathematics / control / dynamical systems",
+      "keywords": ["optimal transport", "wasserstein", "control theory", "controllab", "observab", "dynamical system", "ode", "pde", "koopman", "operator", "manifold", "topolog", "spectral", "convex", "sparse", "compressed sensing", "inverse problem", "数学", "控制", "动力系统", "最优传输"],
+      "sources": ["arxiv", "openalex", "crossref"],
+      "venues": ["SIAM Journal on Applied Mathematics", "SIAM Journal on Control and Optimization", "SIAM Journal on Imaging Sciences", "SIAM Journal on Mathematics of Data Science", "IEEE Transactions on Automatic Control", "Foundations of Computational Mathematics"]
+    },
+    {
+      "id": "information_theory",
+      "label": "Information theory / signal processing",
+      "keywords": ["information theor", "mutual information", "entropy", "channel capacity", "rate-distortion", "information bottleneck", "coding", "signal processing", "信息论", "互信息"],
+      "sources": ["arxiv", "openalex", "crossref"],
+      "venues": ["IEEE Transactions on Information Theory", "IEEE Transactions on Signal Processing"]
+    },
+    {
+      "id": "neuroscience",
+      "label": "Neuroscience",
+      "keywords": ["neuron", "cortex", "neural coding", "spiking", "brain", "synaptic", "神经科学"],
+      "sources": ["europepmc", "pubmed", "openalex", "arxiv"],
+      "venues": ["Neuron", "Nature Neuroscience", "eLife", "PLOS Computational Biology"]
+    }
+  ],
+  "default_sources": ["openalex", "crossref", "semantic_scholar"]
+}

@@ -1,0 +1,52 @@
+{
+  "_note": "Diagnosis taxonomy. Problem types are ordered: cheap, local explanations first; literature-heavy explanations last. Symptom patterns only propose candidates.",
+  "trivial_patterns": [
+    {"pattern": "SyntaxError|IndentationError", "advice": "Fix the syntax error; no literature search."},
+    {"pattern": "ModuleNotFoundError|ImportError|No module named", "advice": "Install / fix the import path."},
+    {"pattern": "FileNotFoundError|No such file or directory|path does not exist", "advice": "Fix the path / working directory."},
+    {"pattern": "KeyError|AttributeError: '\\w+' object has no attribute", "advice": "Inspect the data structure / API version."},
+    {"pattern": "size mismatch|shape mismatch|mat1 and mat2 shapes cannot be multiplied|dimension mismatch", "advice": "Print tensor shapes at module boundaries."},
+    {"pattern": "CUDA out of memory|OutOfMemoryError", "advice": "Reduce batch size / use gradient accumulation / checkpointing; literature only if memory is a fundamental algorithmic bottleneck (then use mode=diagnose with symptom 'complexity bottleneck')."},
+    {"pattern": "TypeError: .* got an unexpected keyword|unexpected keyword argument", "advice": "Check library version / signature."}
+  ],
+  "problem_types": [
+    {"id": "implementation_bug", "label": "Implementation Bug", "order": 1,
+     "checks": ["Overfit a tiny batch (≤ 32 samples): loss should approach 0", "Compare forward outputs against a reference implementation or the paper equations on a toy input", "Check train/eval mode (dropout, batchnorm), detach/no_grad placement, loss reduction", "Verify label/feature alignment after joins and shuffles (index mismatch)", "Assert no NaN/Inf; check learning-rate schedule actually applied"],
+     "literature": false},
+    {"id": "data_processing_error", "label": "Data Processing Error", "order": 2,
+     "checks": ["Re-derive preprocessing from raw data for 3 random samples by hand", "Check normalization fitted on train only (no test statistics leakage)", "Check filtering removed the same features/entities in train and test", "Verify identifiers (gene symbols vs Ensembl, genome build, species) are consistent", "Run `cdri audit leakage` for group/duplicate/spatial leakage"],
+     "literature": false},
+    {"id": "evaluation_mismatch", "label": "Evaluation Mismatch", "order": 3,
+     "checks": ["Recompute the metric at the paper's aggregation level (`cdri audit metric --group ...`)", "Confirm the same split unit (entity-level vs sample-level) as the comparator", "Confirm the baseline was run with the same protocol and a fair tuning budget", "Check whether the comparator's reported number is on a different dataset version"],
+     "literature": true, "query_hint": "evaluation protocol {topic} benchmark reproducibility"},
+    {"id": "optimization_failure", "label": "Optimization Failure", "order": 4,
+     "checks": ["Learning-rate range test; gradient-norm traces per module", "Check loss scale between multi-task terms", "Check for dead units / saturated activations / collapsed attention", "Try a simpler optimizer setting known to work for the baseline"],
+     "literature": true, "query_hint": "training instability {component} loss landscape"},
+    {"id": "representation_failure", "label": "Representation Failure", "order": 5,
+     "checks": ["Linear probe of learned representation for the target and for nuisance variables (batch, donor)", "Check whether embeddings of unseen entities collapse to a common point", "Compare against a fixed / random-feature representation"],
+     "literature": true, "query_hint": "representation collapse {topic} unseen entities"},
+    {"id": "inductive_bias_mismatch", "label": "Inductive Bias Mismatch", "order": 6,
+     "checks": ["List the model's assumptions (signature.required_assumptions) and test each on the data", "Check whether the symmetry/invariance imposed actually holds", "Ablate the inductive-bias module vs a neutral alternative with equal capacity"],
+     "literature": true, "query_hint": "{mechanism} assumptions violated {topic}"},
+    {"id": "label_noise", "label": "Label Noise", "order": 7,
+     "checks": ["Estimate replicate concordance / noise ceiling", "Inspect high-loss training samples for labeling artifacts", "Check whether labels are proxies measured by a different assay"],
+     "literature": true, "query_hint": "noise ceiling replicate concordance {topic}"},
+    {"id": "dataset_shift", "label": "Dataset Shift", "order": 8,
+     "checks": ["Two-sample test / classifier test between train and test features", "Stratify errors by batch / site / donor / entity family", "Check whether test entities are far from train entities in descriptor space"],
+     "literature": true, "query_hint": "distribution shift {topic} out-of-distribution evaluation"},
+    {"id": "identifiability_limit", "label": "Fundamental Identifiability Limitation", "order": 9,
+     "checks": ["Ask whether the supervision signal can in principle distinguish the hypotheses (two different mechanisms producing identical observations?)", "Construct a synthetic dataset where the ground-truth mechanism is known and test recovery", "Check whether the information needed for unseen entities is present in the inputs at all"],
+     "literature": true, "query_hint": "identifiability {topic} {mechanism}"}
+  ],
+  "symptoms": [
+    {"id": "plateau", "patterns": ["plateau", "stagnat", "stuck", "no improvement", "停滞", "不提升"], "candidates": ["optimization_failure", "label_noise", "representation_failure", "identifiability_limit"]},
+    {"id": "below_simple_baseline", "patterns": ["below baseline", "worse than baseline", "simple baseline", "低于基线", "不如基线", "not beat"], "candidates": ["evaluation_mismatch", "implementation_bug", "data_processing_error", "inductive_bias_mismatch", "identifiability_limit"]},
+    {"id": "poor_ood_generalization", "patterns": ["unseen", "generaliz", "held-out", "ood", "out-of-distribution", "test set much worse", "泛化", "未见"], "candidates": ["data_processing_error", "evaluation_mismatch", "dataset_shift", "representation_failure", "inductive_bias_mismatch", "identifiability_limit"]},
+    {"id": "prediction_collapse", "patterns": ["collapse", "constant prediction", "same output", "mean prediction", "坍缩", "输出相同"], "candidates": ["implementation_bug", "optimization_failure", "representation_failure", "label_noise"]},
+    {"id": "train_test_gap", "patterns": ["overfit", "train test gap", "train good test bad", "过拟合", "训练集好"], "candidates": ["data_processing_error", "dataset_shift", "representation_failure"]},
+    {"id": "reproduction_failure", "patterns": ["cannot reproduce", "reproduc", "paper reports", "复现"], "candidates": ["evaluation_mismatch", "data_processing_error", "implementation_bug"]},
+    {"id": "loss_anomaly", "patterns": ["loss explod", "nan", "loss diverg", "negative loss", "loss oscillat", "损失"], "candidates": ["implementation_bug", "optimization_failure"]},
+    {"id": "complexity_bottleneck", "patterns": ["memory bottleneck", "too slow", "quadratic", "runtime", "complexity", "显存", "复杂度"], "candidates": ["inductive_bias_mismatch"]},
+    {"id": "contradicts_theory", "patterns": ["contradict", "unexpected", "opposite", "theory predicts", "矛盾", "与理论"], "candidates": ["implementation_bug", "evaluation_mismatch", "inductive_bias_mismatch", "identifiability_limit"]}
+  ]
+}

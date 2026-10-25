@@ -1,0 +1,11 @@
+# CDRI is distributed as an Agent Skill (skills/cdri) and run as a script; it is not a pip package.
+# This file only configures the development tooling.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.cdri]
+python = ">=3.9"
+runtime-dependencies = []                       # standard library only
+optional = ["pymupdf4llm", "pymupdf", "pypdf", "sentence-transformers"]
+dev = ["pytest"]

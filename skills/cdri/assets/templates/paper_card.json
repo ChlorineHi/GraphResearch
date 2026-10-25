@@ -1,0 +1,59 @@
+{
+  "_instructions": "Fill from the FULL TEXT (Methods, Results, Supplementary) and code. Every claim item needs a source {type, location, quote?}. type in paper_fulltext | paper_supplement | paper_abstract | code | agent. Method details (B/C/D) cited from abstract/introduction are stored as unverified. Delete keys you cannot fill instead of guessing; missing parts are reported as gaps.",
+  "paper_id": "arxiv:XXXX.XXXXX | doi:10.xxxx/yyyy",
+  "title": "",
+  "reading_depth": "metadata | abstract | fulltext | deep",
+  "method": {"name": "", "aliases": [], "introduced_here": true, "location": "Section 3"},
+  "A_question": {
+    "problem": {"text": "", "source": {"type": "paper_fulltext", "location": "1 Introduction", "quote": ""}},
+    "importance": {"text": "", "source": {"type": "paper_fulltext", "location": ""}},
+    "prior_limitations": [{"text": "", "source": {"type": "paper_fulltext", "location": ""}}],
+    "what_changed": ["problem_definition | model_mechanism | training_objective | data_usage | evaluation"]
+  },
+  "B_formulation": {
+    "inputs": {"text": "x ∈ R^{L×4} one-hot sequence ...", "source": {"type": "paper_fulltext", "location": "Methods 2.1"}},
+    "outputs": {"text": "", "source": {"type": "paper_fulltext", "location": ""}},
+    "supervision": {"text": "", "source": {"type": "paper_fulltext", "location": ""}},
+    "objective": {"text": "", "source": {"type": "paper_fulltext", "location": ""}},
+    "assumptions": [{"id": "equilibrium-or-quasi-equilibrium", "text": "", "source": {"type": "paper_fulltext", "location": ""}}],
+    "operators": [{"name": "", "text": "", "source": {"type": "paper_fulltext", "location": ""}}],
+    "equations": [{"label": "Eq. 1", "latex": "", "role": "loss | model | constraint", "depends_on": [], "source": {"type": "paper_fulltext", "location": ""}}]
+  },
+  "C_innovation": [
+    {"statement": "", "kind": "structure | objective | probabilistic | representation | inference | paradigm",
+     "novel_vs_prior": "what exactly differs from prior work", "prior_work": ["doi:..."],
+     "inductive_bias": "", "why_fits": "", "scope": "general | domain_specific", "standard_component": false,
+     "source": {"type": "paper_fulltext", "location": ""}}
+  ],
+  "D_implementation": {
+    "repo": {"url": "https://github.com/owner/name", "commit": "full sha", "official": true, "location": "Code availability"},
+    "items": [{"aspect": "tensor_shapes | preprocessing | sample_construction | loss_computation | train_vs_infer | hyperparameters | modules", "text": "", "source": {"type": "code", "location": "path.py:L10-L40", "commit": "sha"}}],
+    "code_links": [{"formula": "Eq. 3", "path": "model/loss.py", "symbol": "ContrastiveLoss.forward", "lines": "12-48", "permalink": "", "status": "consistent | discrepancy | unverified", "note": "e.g. code uses mean not sum over positives"}]
+  },
+  "E_evidence": {
+    "experiments": [{"text": "", "hypothesis_tested": "", "result": "", "is_ablation": false, "is_ood": false, "datasets": [], "metrics": ["spearman"], "protocol": {"split": "", "aggregation": ""}, "source": {"type": "paper_fulltext", "location": "Table 2"}}],
+    "negative_results": [{"text": "", "source": {"type": "paper_fulltext", "location": ""}}],
+    "limitations": {
+      "author_acknowledged": [{"text": "", "source": {"type": "paper_fulltext", "location": "Discussion"}}],
+      "inferred_from_results": [{"text": "", "basis": "Table 3 shows ..."}],
+      "agent_proposed": [{"text": "", "rationale": ""}]
+    }
+  },
+  "F_signature": {
+    "source_domain": "",
+    "original_problem": "",
+    "mathematical_abstraction": "",
+    "core_operators": [],
+    "mechanisms": [],
+    "inductive_biases": [],
+    "required_assumptions": [],
+    "data_structure": [],
+    "supervision": [],
+    "invariances": [],
+    "complexity": "",
+    "generalization_mechanism": "",
+    "failure_conditions": [],
+    "potential_target_domains": [],
+    "problem_structures": []
+  }
+}

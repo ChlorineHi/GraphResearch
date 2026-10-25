@@ -1,0 +1,5 @@
+# SYNTHETIC FIXTURE config
+lr: 0.001
+batch_size: 256
+epochs: 30
+dropout: 0.1
