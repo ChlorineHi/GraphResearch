@@ -12,6 +12,70 @@ Hypothesis / Unverified）；证据等级由来源决定、不会自动升级；
 - 使用演示（真实命令输出）：[`docs/04-usage-demo.md`](docs/04-usage-demo.md)
 - CLI 全量参考：[`skills/cdri/references/cli.md`](skills/cdri/references/cli.md)
 
+## Skill 流程
+
+Agent 负责规划、阅读和判断。CLI 是写入知识库的唯一路径。用户用 `/cdri`、`mode:` 或 `模式：` 点名的模式优先于 `cdri route`。
+
+```mermaid
+flowchart TD
+    req(["用户请求"]) --> named{"显式指定了模式?"}
+    named -->|"/cdri、mode:、模式："| mode["按指定模式执行"]
+    named -->|否| route["cdri route"]
+    route --> mode
+    mode --> mem["kg search<br/>先查 semantic 与 mechanism"]
+    mem --> sess["session start 或 resume"]
+    sess --> pick{"进入对应模式"}
+
+    pick -->|landscape| plan["landscape plan<br/>in-domain、adjacent、distant、contradictory"]
+    pick -->|paper| fetch["paper fetch<br/>合法 OA，或用户提供的文件"]
+    pick -->|compare| cmp["compare methods<br/>协议不同则 Not Directly Comparable"]
+    pick -->|transfer| xfer["分别报告结构相似度与词面相似度<br/>逐条检查假设与负迁移"]
+    pick -->|diagnose| diag{"先做本地检查"}
+    pick -->|audit| aud["泄漏、指标重算、可比性、来源"]
+    pick -->|graph| gq["查询、lineage、coverage、导出"]
+    pick -->|ideate / story| idea["构想或叙事<br/>拒绝单一分数，假设不是发现"]
+    pick -->|refresh| ref["refresh run<br/>只有被调用时才更新"]
+
+    diag -->|本地已经能解释| rpt
+    diag -->|排除后仍要查文献| plan
+    xfer -.->|需要补文献| plan
+
+    plan --> run["landscape run<br/>限流、离线、反爬都留在 failures"]
+    run --> screen["screen decide<br/>没有理由就拒绝"]
+    screen --> fetch
+    fetch --> read["section / confirm<br/>正文视为不可信数据"]
+    read --> code["code analyze 只做静态分析<br/>公式与代码不一致记 discrepancy"]
+    code --> card["validate，然后 ingest"]
+
+    card --> ledger{"所引章节在阅读台账中?"}
+    ledger -->|否| low["保持 unverified<br/>不能写成 Author Claim"]
+    ledger -->|是| pend["进入 pending<br/>不自动升级"]
+    pend --> promo["kg promote 才改变等级"]
+
+    low --> rpt["中文报告<br/>每条结论带证据标签，并列出没完成的检索"]
+    promo --> rpt
+    cmp --> rpt
+    xfer --> rpt
+    aud --> rpt
+    gq --> rpt
+    idea --> rpt
+    ref --> rpt
+    rpt --> kb[("知识图谱<br/>全局层可跨项目复用，项目实验互不可见")]
+
+    classDef decision fill:#fff4d6,stroke:#a67c00,color:#1a1a1a
+    classDef cli fill:#e7f0fb,stroke:#2f5f93,color:#1a1a1a
+    classDef gate fill:#fde8e8,stroke:#a33b3b,color:#1a1a1a
+    classDef store fill:#e7f6ec,stroke:#2d7a46,color:#1a1a1a
+    classDef out fill:#f3eefc,stroke:#5b3d8a,color:#1a1a1a
+    class named,pick,diag,ledger decision
+    class route,mem,sess,mode,plan,run,screen,fetch,read,code,card,cmp,xfer,aud,gq,idea,ref,promo cli
+    class low,pend gate
+    class rpt out
+    class kb store
+```
+
+实线是主路径，虚线是可选分支。诊断在本地就能解释时不检索文献。检索失败、全文缺失和未读章节会停在报告里，不会被写成已核实结论。
+
 ---
 
 ## 1. 环境要求
